@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Land Wallet - The Digital Asset Vault</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <style>
+        :root {
+            /* Themes and shared variables */
+            --bg-primary: #0d1117; --bg-secondary: #161b22; --bg-tertiary: #21262d; --border-primary: #30363d; --border-secondary: #8b949e; --text-primary: #c9d1d9; --text-secondary: #8b949e; --text-on-accent: #0d1117; --shadow-glow: 0 0 15px rgba(201, 164, 93, 0.2); --bg-grid: var(--border-primary);
+            --accent-prestige: #c9a45d; --accent-prestige-hover: #e0b868; --accent-data: #38bdf8; --font-main: 'Tajawal', sans-serif; --font-mono: 'Roboto Mono', monospace; --border-radius: 6px;
+        }
+        body.light-mode {
+            --bg-primary: #f6f8fa; --bg-secondary: #ffffff; --bg-tertiary: #f0f2f5; --border-primary: #d0d7de; --border-secondary: #57606a; --text-primary: #1f2328; --text-secondary: #57606a; --text-on-accent: #ffffff; --shadow-glow: 0 0 15px rgba(201, 164, 93, 0.3); --bg-grid: var(--border-primary);
+        }
+        /* Base styles */
+        * { box-sizing: border-box; transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+        body { margin: 0; font-family: var(--font-main); background-color: var(--bg-primary); color: var(--text-primary); overflow: hidden; background-image: linear-gradient(var(--bg-grid) 1px, transparent 1px), linear-gradient(to left, var(--bg-grid) 1px, transparent 1px); background-size: 40px 40px; }
+        .app-layout { display: flex; height: 100vh; }
+        /* Sidebar */
+        .sidebar { width: 250px; background-color: var(--bg-secondary); border-left: 1px solid var(--border-primary); padding: 24px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .sidebar-header { text-align: center; margin-bottom: 40px; }
+        .sidebar-header h1 { font-size: 32px; font-weight: 800; letter-spacing: 2px; color: var(--accent-prestige); }
+        .nav-menu { flex-grow: 1; }
+        .nav-menu button { display: flex; align-items: center; width: 100%; padding: 12px 16px; margin-bottom: 8px; gap: 12px; background: none; border: none; border-right: 3px solid transparent; color: var(--text-secondary); text-align: right; font-family: var(--font-main); font-size: 16px; font-weight: 500; cursor: pointer; }
+        .nav-menu button:hover { color: var(--text-primary); background-color: var(--bg-tertiary); }
+        .nav-menu button.active { color: var(--text-primary); background-color: var(--bg-tertiary); border-right-color: var(--accent-prestige); font-weight: 700; }
+        .nav-icon { width: 20px; height: 20px; }
+        .sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-primary); }
+        .theme-toggle-btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--border-radius); color: var(--text-secondary); cursor: pointer; }
+        .theme-toggle-btn:hover { color: var(--text-primary); border-color: var(--accent-prestige); }
+        .theme-toggle-btn .icon { width: 20px; height: 20px; }
+        .theme-toggle-btn .icon-sun { display: none; }
+        body.light-mode .theme-toggle-btn .icon-sun { display: block; }
+        body.light-mode .theme-toggle-btn .icon-moon { display: none; }
+        /* Main content */
+        .main-content { flex-grow: 1; overflow-y: auto; }
+        .page { padding: 40px; display: none; }
+        .page.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; border-bottom: 1px solid var(--border-primary); padding-bottom: 16px; }
+        .page-header h2 { margin: 0; font-size: 28px; }
+        .header-actions { display: flex; gap: 12px; }
+        .btn { padding: 10px 24px; border-radius: var(--border-radius); cursor: pointer; font-size: 15px; font-family: var(--font-main); font-weight: 700; border: 1px solid var(--accent-prestige); background-color: transparent; color: var(--accent-prestige); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);}
+        .btn:disabled { cursor: not-allowed; opacity: 0.5; background-color: transparent !important; color: var(--border-secondary) !important; border-color: var(--border-primary) !important; box-shadow: none !important; }
+        .btn:hover:not(:disabled) { background-color: var(--accent-prestige); color: var(--text-on-accent); box-shadow: var(--shadow-glow); }
+        .btn-primary { background-color: var(--accent-prestige); color: var(--text-on-accent); }
+        .btn-primary:hover:not(:disabled) { background-color: var(--accent-prestige-hover); border-color: var(--accent-prestige-hover); }
+        .btn-secondary { border-color: var(--border-secondary); color: var(--text-secondary); }
+        .btn-secondary:hover:not(:disabled) { background-color: var(--border-secondary); color: var(--bg-primary); }
+        /* KPI, Table, Pagination styles */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-bottom: 32px; } .kpi-card { background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--border-radius); padding: 24px; position: relative; } .kpi-card:hover { border-color: var(--accent-prestige); } .kpi-card .label { color: var(--text-secondary); margin-bottom: 8px; } .kpi-card .value { font-size: 36px; font-weight: 800; color: var(--accent-data); font-family: var(--font-mono); } .table-controls { display: flex; gap: 20px; align-items: flex-end; padding: 20px; background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-bottom: none; border-radius: var(--border-radius) var(--border-radius) 0 0; margin-bottom: 0; } .search-bar { flex-grow: 1; } .table-controls + .table-container { border-top-right-radius: 0; border-top-left-radius: 0; } .table-container { background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--border-radius); min-height: 300px; } .lands-table { width: 100%; border-collapse: collapse; } .lands-table th, .lands-table td { text-align: right; padding: 16px; border-bottom: 1px solid var(--border-primary); } .lands-table th { font-weight: 700; color: var(--text-secondary); } .lands-table tbody tr { cursor: pointer; } .lands-table tbody tr:hover { background-color: var(--bg-tertiary); } .lands-table tbody tr:last-child td { border-bottom: none; } .lands-table .mono { font-family: var(--font-mono); color: var(--accent-data); } .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; } .status-badge.approved { background-color: rgba(46, 160, 67, 0.2); color: #57ab5a; } .status-badge.pending { background-color: rgba(229, 165, 56, 0.2); color: #e5a538; } .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 16px; padding-top: 24px; }
+        /* Wizard Form */
+        .wizard-form .form-step { display: none; } .wizard-form .form-step.active { display: block; animation: fadeIn 0.5s; } .form-section { border: 1px solid var(--border-primary); padding: 24px; border-radius: var(--border-radius); margin-bottom: 24px; background-color: var(--bg-secondary); } .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .form-group { display: flex; flex-direction: column; } .form-group label { margin-bottom: 8px; font-weight: 500; color: var(--text-secondary); } .form-group input, .form-group select { background-color: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--border-radius); padding: 12px; color: var(--text-primary); font-family: var(--font-main); font-size: 16px; } .form-group input:focus, .form-group select:focus { border-color: var(--accent-prestige); outline: none; } .form-actions { margin-top: 20px; display: flex; justify-content: space-between; }
+        
+        /* File input styling */
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-input-btn { border: 1px solid var(--border-primary); background-color: var(--bg-primary); color: var(--text-secondary); padding: 12px; border-radius: var(--border-radius); cursor: pointer; display: block; text-align: center; }
+        .file-input-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .file-name { margin-top: 8px; font-size: 14px; color: var(--text-secondary); font-family: var(--font-mono); text-align: left; direction: ltr; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; backdrop-filter: blur(8px); z-index: 1000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        body.dark-mode .modal-overlay { background: rgba(13, 17, 23, 0.8); }
+        body.light-mode .modal-overlay { background: rgba(246, 248, 250, 0.7); }
+        .modal-overlay.visible { opacity: 1; visibility: visible; } .modal-content { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 8px; width: 95%; max-width: 1000px; box-shadow: 0 0 30px rgba(0,0,0,0.5); display: flex; transform: translateY(20px); transition: transform 0.4s; } .modal-overlay.visible .modal-content { transform: translateY(0); } .modal-main { flex-grow: 1; padding: 32px; overflow-y: auto; max-height: 90vh; } .modal-sidebar { width: 350px; background-color: var(--bg-primary); padding: 32px; border-right: 1px solid var(--border-primary); } .report-section { margin-bottom: 24px; } .report-section h4 { color: var(--accent-prestige); margin: 0 0 16px 0; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; } .detail-item { margin-bottom: 12px; } .detail-item .label { color: var(--text-secondary); display: block; font-size: 14px; } .detail-item .value { font-size: 18px; font-weight: 500; } .detail-item .mono { font-family: var(--font-mono); color: var(--accent-data); }
+        .wireframe-viz { height: 250px; background-color: #000; border-radius: var(--border-radius); border: 1px solid var(--border-primary); display: flex; align-items: center; justify-content: center; background-image: url('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2Z0a3o3eXoxOTRzNjFiaG02Z3F5cGRud3RwbjZtN3c3ZW95aGcwaiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/L1FJH5e3p3mH6/giphy.gif'); background-size: cover; background-position: center; margin-bottom: 24px; transition: background-image 0.3s; position: relative; overflow: hidden; }
+        
+        /* PDF Viewer Styles */
+        .pdf-viewer { width: 100%; height: 100%; display: none; }
+        .pdf-canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .pdf-controls { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); border-radius: 20px; padding: 5px 15px; display: none; align-items: center; gap: 10px; }
+        .pdf-controls button { background: none; border: none; color: white; cursor: pointer; padding: 5px; border-radius: 3px; }
+        .pdf-controls button:hover { background: rgba(255,255,255,0.2); }
+        .pdf-page-info { color: white; font-size: 12px; }
+        .wireframe-viz:hover .pdf-controls { display: flex; }
+        
+        /* Print Styles */
+        @media print {
+            /* Hide all buttons and interactive elements */
+            .btn, button, .pdf-controls, .modal-sidebar .report-section:last-child {
+                display: none !important;
+            }
+            
+            /* Hide the ACTIONS section completely */
+            .report-section h4:contains("ACTIONS"), 
+            .report-section:has(h4:contains("ACTIONS")) {
+                display: none !important;
+            }
+            
+            /* Hide specific action buttons by targeting their parent */
+            .modal-sidebar .report-section:nth-last-child(1) {
+                display: none !important;
+            }
+            
+            /* Ensure modal content takes full width when printing */
+            .modal-content {
+                width: 100% !important;
+                max-width: none !important;
+                box-shadow: none !important;
+                border: none !important;
+                transform: none !important;
+            }
+            
+            /* Adjust modal layout for print */
+            .modal-sidebar {
+                width: 300px !important;
+                border-right: 1px solid #ccc !important;
+            }
+            
+            /* Remove background colors for better print quality */
+            body, .modal-content, .modal-sidebar, .modal-main {
+                background: white !important;
+                color: black !important;
+            }
+            
+            /* Ensure text is readable in print */
+            .detail-item .label {
+                color: #666 !important;
+            }
+            
+            .detail-item .value {
+                color: #000 !important;
+            }
+            
+            .report-section h4 {
+                color: #333 !important;
+            }
+            
+            /* Hide PDF controls in print */
+            .pdf-controls {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="dark-mode">
+
+    <div class="app-layout">
+        <aside class="sidebar">
+             <div class="sidebar-header"><h1>Land Wallet</h1></div>
+             <nav class="nav-menu" id="navMenu">
+                 <button class="nav-btn active" onclick="navigateTo('dashboard')"><svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v7.5a.5.5 0 01-.5.5H5.5a.5.5 0 01-.5-.5V5z"></path></svg><span>لوحة القيادة</span></button>
+                 <button class="nav-btn" onclick="navigateTo('manage-plots')"><svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path></svg><span>إدارة الأراضي</span></button>
+                 <button class="nav-btn" onclick="navigateTo('add-plot')"><svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path></svg><span>إضافة قطعة جديدة</span></button>
+             </nav>
+             <div class="sidebar-footer">
+                 <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="تبديل الوضع">
+                     <svg class="icon icon-moon" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                     <svg class="icon icon-sun" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414 0l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path></svg>
+                 </button>
+             </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="dashboard" class="page active">
+                <div class="page-header"><h2>لوحة القيادة</h2><button class="btn" onclick="exportDashboardPdf()">تصدير تقرير PDF</button></div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="label">إجمالي الأراضي المسجلة</div><div class="value" id="kpi-total-plots">...</div></div>
+                    <div class="kpi-card"><div class="label">إجمالي المساحة (م²)</div><div class="value" id="kpi-total-area">...</div></div>
+                    <div class="kpi-card"><div class="label">طلبات قيد المراجعة</div><div class="value" id="kpi-pending-plots">...</div></div>
+                </div>
+            </div>
+
+            <div id="manage-plots" class="page">
+                 <div class="page-header"><h2>إدارة الأراضي</h2><div class="header-actions"><button class="btn btn-secondary" onclick="exportToExcel()">تصدير إلى Excel</button><button class="btn btn-primary" onclick="navigateTo('add-plot')">+ إضافة قطعة جديدة</button></div></div>
+                 <div class="table-controls"><div class="search-bar form-group"><label for="searchInput">بحث</label><input type="text" id="searchInput" placeholder="ابحث برقم القطعة أو اسم المالك..."></div><div class="form-group"><label for="statusFilter">تصفية حسب الحالة</label><select id="statusFilter"><option value="all">الكل</option><option value="approved">معتمدة</option><option value="pending">قيد المراجعة</option></select></div><div class="form-group"><label for="rowsPerPage">عرض بالصفحة</label><select id="rowsPerPage"><option value="5">5</option><option value="10">10</option><option value="25">25</option></select></div></div>
+                 <div class="table-container"><table class="lands-table"><thead><tr><th>رقم القطعة</th><th>المالك الحالي</th><th>المساحة (م²)</th><th>الحالة</th></tr></thead><tbody id="plotsTableBody"></tbody></table></div>
+                 <div class="pagination-controls"><button class="btn btn-secondary" id="prevPageBtn">&laquo; السابق</button><span id="pageInfo"></span><button class="btn btn-secondary" id="nextPageBtn">التالي &raquo;</button></div>
+            </div>
+
+            <div id="add-plot" class="page">
+                 <div class="page-header"><h2>تسجيل قطعة أرض جديدة</h2></div>
+                 <form class="wizard-form" id="addPlotForm" novalidate>
+                    <div id="step1" class="form-step active">
+                        <div class="form-section"><h3>الخطوة 1: البيانات الأساسية</h3><div class="form-grid">
+                            <div class="form-group"><label>رقم القطعة</label><input type="text" id="newPlotId" data-required="true"></div>
+                            <div class="form-group"><label>المساحة الإجمالية (م²)</label><input type="number" id="newPlotArea" data-required="true"></div>
+                            <div class="form-group"><label>اسم المالك الحالي</label><input type="text" id="newPlotOwner" data-required="true"></div>
+                            <div class="form-group"><label>اسم المالك السابق</label><input type="text" id="newPlotPrevOwner"></div>
+                        </div></div>
+                        <div class="form-actions"><div></div><button type="button" class="btn btn-primary" onclick="handleNextStep(1)">التالي: الأبعاد والوثائق</button></div>
+                    </div>
+                    <div id="step2" class="form-step">
+                        <div class="form-section"><h3>الخطوة 2: الأبعاد والحدود</h3><div class="form-grid">
+                            <div class="form-group"><label>الضلع الشمالي</label><input type="text" id="newPlotNorth" placeholder="الطول والجار" data-required="true"></div>
+                            <div class="form-group"><label>الضلع الجنوبي</label><input type="text" id="newPlotSouth" placeholder="الطول والجار" data-required="true"></div>
+                            <div class="form-group"><label>الضلع الشرقي</label><input type="text" id="newPlotEast" placeholder="الطول والجار" data-required="true"></div>
+                            <div class="form-group"><label>الضلع الغربي</label><input type="text" id="newPlotWest" placeholder="الطول والجار" data-required="true"></div>
+                        </div></div>
+                        <div class="form-section">
+                            <h3>الخطوة 3: الوثائق</h3>
+                            <div class="form-group">
+                                <label>مخطط الكروكي (اختياري)</label>
+                                <div class="file-input-wrapper">
+                                    <button type="button" class="file-input-btn">اختر ملفًا</button>
+                                    <input type="file" id="newPlotAttachment" accept="image/*,application/pdf">
+                                </div>
+                                <div class="file-name" id="fileName">لم يتم اختيار أي ملف</div>
+                            </div>
+                        </div>
+                        <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="changeStep(1)">السابق</button><button type="submit" class="btn btn-primary">حفظ وإنهاء</button></div>
+                    </div>
+                 </form>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="reportModal" onclick="closeReportModal(event)">
+        <div class="modal-content">
+            <aside class="modal-sidebar">
+                <div class="report-section">
+                    <h4>VISUALIZATION</h4>
+                    <div class="wireframe-viz" id="wireframeViz">
+                        <div class="pdf-viewer" id="pdfViewer">
+                            <canvas class="pdf-canvas" id="pdfCanvas"></canvas>
+                            <div class="pdf-controls" id="pdfControls">
+                                <button onclick="previousPage()">‹</button>
+                                <span class="pdf-page-info" id="pageInfo">1 / 1</span>
+                                <button onclick="nextPage()">›</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="report-section">
+                    <h4>ACTIONS</h4>
+                    <button class="btn btn-primary" style="width:100%; margin-bottom: 10px;" onclick="printModalReport()">طباعة التقرير</button>
+                    <button class="btn btn-secondary" style="width:100%; margin-bottom: 10px;" id="modalDownloadBtn" onclick="downloadAttachment()">تحميل المخطط (PDF)</button>
+                    <button class="btn btn-warning" style="width:100%; margin-bottom: 10px; background-color: #f59e0b; border-color: #f59e0b;" onclick="editPlot()">تعديل البيانات</button>
+                    <button class="btn btn-danger" style="width:100%; background-color: #dc2626; border-color: #dc2626;" onclick="deletePlot()">حذف القطعة</button>
+                </div>
+            </aside>
+            <div class="modal-main" id="modalMainContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        
+        // Set PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        
+        let currentPdf = null;
+        let currentPageNum = 1;
+        let totalPages = 1;
+        
+        const mockPlotData = [
+            { id: '101-A-N', owner: 'عبدالله بن محمد الفهد', prevOwner: 'خالد بن سعد العامر', area: 1250.50, status: 'approved', attachment: 'krooki-101-A-N.pdf', boundaries: { north: 'بطول 25.00م على شارع الأمير سلطان', south: 'بطول 25.00م على قطعة 102-أ', east: 'بطول 50.02م على قطعة 101-ب', west: 'بطول 50.02م على ممر مشاة' } },
+            { id: '205-B-E', owner: 'شركة رؤى المستقبل العقارية', prevOwner: 'مؤسسة البناء الحديث', area: 5600.00, status: 'pending', attachment: null, boundaries: { north: 'بطول 70.00م على شارع الملك عبدالله', south: 'بطول 70.00م على قطعة 206-ب', east: 'بطول 80.00م على شارع فرعي', west: 'بطول 80.00م على قطعة 204-ب' } },
+            { id: '312-C-S', owner: 'سارة بنت إبراهيم اليوسف', prevOwner: 'عبدالله بن محمد الفهد', area: 800.00, status: 'approved', attachment: 'krooki-312-C-S.jpg', boundaries: { north: 'بطول 20.00م على قطعة 311-ج', south: 'بطول 20.00م على شارع فرعي', east: 'بطول 40.00م على قطعة 313-ج', west: 'بطول 40.00م على حديقة عامة' } },
+        ];
+        let currentPage = 1, rowsPerPage = 5, currentlyDisplayedData = [], currentModalPlot = null;
+        const body = document.body, navMenu = document.getElementById('navMenu'), navButtons = navMenu.querySelectorAll('.nav-btn'), pages = document.querySelectorAll('.page'), reportModal = document.getElementById('reportModal'), wizardSteps = document.querySelectorAll('.form-step'), searchInput = document.getElementById('searchInput'), statusFilter = document.getElementById('statusFilter'), rowsPerPageSelect = document.getElementById('rowsPerPage'), plotsTableBody = document.getElementById('plotsTableBody'), prevPageBtn = document.getElementById('prevPageBtn'), nextPageBtn = document.getElementById('nextPageBtn'), pageInfo = document.getElementById('pageInfo'), addPlotForm = document.getElementById('addPlotForm'), newPlotAttachmentInput = document.getElementById('newPlotAttachment'), fileNameDisplay = document.getElementById('fileName');
+        
+        // PDF Viewer Functions
+        async function loadPDF(url) {
+            try {
+                if (typeof pdfjsLib === 'undefined') {
+                    console.error('PDF.js not loaded');
+                    return false;
+                }
+                
+                const loadingTask = pdfjsLib.getDocument(url);
+                currentPdf = await loadingTask.promise;
+                totalPages = currentPdf.numPages;
+                currentPageNum = 1;
+                
+                await renderPage(currentPageNum);
+                updatePageInfo();
+                
+                document.getElementById('pdfViewer').style.display = 'block';
+                return true;
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                return false;
+            }
+        }
+        
+        async function renderPage(pageNum) {
+            if (!currentPdf) return;
+            
+            try {
+                const page = await currentPdf.getPage(pageNum);
+                const canvas = document.getElementById('pdfCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                const containerWidth = 250;
+                const containerHeight = 250;
+                
+                const viewport = page.getViewport({ scale: 1 });
+                const scale = Math.min(containerWidth / viewport.width, containerHeight / viewport.height);
+                const scaledViewport = page.getViewport({ scale });
+                
+                canvas.width = scaledViewport.width;
+                canvas.height = scaledViewport.height;
+                
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: scaledViewport
+                };
+                
+                await page.render(renderContext).promise;
+            } catch (error) {
+                console.error('Error rendering page:', error);
+            }
+        }
+        
+        function updatePageInfo() {
+            const pageInfoElement = document.getElementById('pageInfo');
+            if (pageInfoElement) {
+                pageInfoElement.textContent = `${currentPageNum} / ${totalPages}`;
+            }
+        }
+        
+        async function previousPage() {
+            if (currentPageNum > 1) {
+                currentPageNum--;
+                await renderPage(currentPageNum);
+                updatePageInfo();
+            }
+        }
+        
+        async function nextPage() {
+            if (currentPageNum < totalPages) {
+                currentPageNum++;
+                await renderPage(currentPageNum);
+                updatePageInfo();
+            }
+        }
+        
+        function navigateTo(pageId) { pages.forEach(p => p.classList.remove('active')); document.getElementById(pageId).classList.add('active'); navButtons.forEach(b => { b.classList.remove('active'); if(b.getAttribute('onclick').includes(`'${pageId}'`)) b.classList.add('active'); }); if(pageId === 'manage-plots') applyFiltersAndRender(); if(pageId === 'dashboard') updateDashboardKPIs(); }
+        function updateDashboardKPIs() { document.getElementById('kpi-total-plots').textContent = mockPlotData.length.toLocaleString(); document.getElementById('kpi-total-area').textContent = Math.round(mockPlotData.reduce((s, p) => s + p.area, 0)).toLocaleString(); document.getElementById('kpi-pending-plots').textContent = mockPlotData.filter(p => p.status === 'pending').length; }
+        function applyFiltersAndRender() { const s = searchInput.value.toLowerCase(), t = statusFilter.value; rowsPerPage = parseInt(rowsPerPageSelect.value, 10); currentlyDisplayedData = mockPlotData.filter(p => (p.id.toLowerCase().includes(s) || p.owner.toLowerCase().includes(s)) && (t === 'all' || p.status === t)); const totalPages = Math.ceil(currentlyDisplayedData.length / rowsPerPage) || 1; if(currentPage > totalPages) currentPage = totalPages; renderTable(currentlyDisplayedData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)); renderPagination(currentlyDisplayedData.length, totalPages); }
+        function renderTable(data) { plotsTableBody.innerHTML = ''; if(data.length === 0) { plotsTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-secondary);">لا توجد نتائج مطابقة.</td></tr>`; return; } data.forEach(p => { const r = document.createElement('tr'); r.onclick = () => showReportModal(p); r.innerHTML = `<td class="mono">${p.id}</td><td>${p.owner}</td><td class="mono">${p.area.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td><span class="status-badge ${p.status}">${p.status === 'approved' ? 'معتمدة' : 'قيد المراجعة'}</span></td>`; plotsTableBody.appendChild(r); }); }
+        function renderPagination(totalRows, totalPages) { pageInfo.textContent = `صفحة ${currentPage} من ${totalPages}`; prevPageBtn.disabled = currentPage === 1; nextPageBtn.disabled = currentPage === totalPages || totalRows === 0; }
+        
+        async function showReportModal(plot) {
+            currentModalPlot = plot;
+            const modalMainContent = document.getElementById('modalMainContent');
+            const wireframeViz = document.getElementById('wireframeViz');
+            const downloadBtn = document.getElementById('modalDownloadBtn');
+            const pdfViewer = document.getElementById('pdfViewer');
+            
+            // Reset visualization area
+            wireframeViz.style.backgroundImage = `url('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2Z0a3o3eXoxOTRzNjFiaG02Z3F5cGRud3RwbjZtN3c3ZW95aGcwaiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/L1FJH5e3p3mH6/giphy.gif')`;
+            wireframeViz.style.backgroundSize = 'cover';
+            wireframeViz.style.backgroundPosition = 'center';
+            wireframeViz.innerHTML = pdfViewer.outerHTML;
+            pdfViewer.style.display = 'none';
+            
+            let attachmentsHtml = '<div class="detail-item"><div class="value">لا توجد مرفقات</div></div>';
+            const hasLiveFile = !!plot.attachmentUrl;
+            
+            if (plot.attachment) {
+                if (hasLiveFile) {
+                    const isImage = /\.(jpe?g|png|gif)$/i.test(plot.attachment);
+                    const isPdf = /\.pdf$/i.test(plot.attachment);
+                    
+                    if (isImage) { 
+                        wireframeViz.style.backgroundImage = `url(${plot.attachmentUrl})`; 
+                        wireframeViz.style.backgroundSize = 'contain'; 
+                        wireframeViz.style.backgroundRepeat = 'no-repeat'; 
+                        wireframeViz.innerHTML = '';
+                    } else if (isPdf) {
+                        wireframeViz.style.backgroundImage = 'none';
+                        wireframeViz.innerHTML = `
+                            <div class="pdf-viewer" id="pdfViewer">
+                                <canvas class="pdf-canvas" id="pdfCanvas"></canvas>
+                                <div class="pdf-controls" id="pdfControls">
+                                    <button onclick="previousPage()">‹</button>
+                                    <span class="pdf-page-info" id="pageInfo">1 / 1</span>
+                                    <button onclick="nextPage()">›</button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Load PDF
+                        const pdfLoaded = await loadPDF(plot.attachmentUrl);
+                        if (!pdfLoaded) {
+                            wireframeViz.innerHTML = `
+                                <div style="color: var(--text-secondary); text-align: center;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <p style="margin-top: 10px; font-family: var(--font-mono); font-size: 14px;">خطأ في تحميل PDF</p>
+                                </div>
+                            `;
+                        }
+                    } else { 
+                        wireframeViz.style.backgroundImage = 'none'; 
+                        wireframeViz.innerHTML = `
+                            <div style="color: var(--text-secondary); text-align: center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                                <p style="margin-top: 10px; font-family: var(--font-mono); font-size: 14px;">${plot.attachment}</p>
+                            </div>
+                        `;
+                    }
+                    attachmentsHtml = `<button class="btn" onclick="window.open('${plot.attachmentUrl}', '_blank')">عرض الكروكي (${plot.attachment})</button>`;
+                } else { 
+                    attachmentsHtml = `<button class="btn" disabled title="لا يمكن معاينة المرفقات المبدئية">عرض الكروكي (${plot.attachment})</button>`; 
+                }
+            }
+            
+            downloadBtn.disabled = !hasLiveFile;
+            modalMainContent.innerHTML = `<div class="report-section"><h4>CORE DATA</h4><div class="detail-item"><div class="label">PLOT ID</div><div class="value mono">${plot.id}</div></div><div class="detail-item"><div class="label">CURRENT OWNER</div><div class="value">${plot.owner}</div></div><div class="detail-item"><div class="label">PREVIOUS OWNER</div><div class="value">${plot.prevOwner || 'غير متوفر'}</div></div><div class="detail-item"><div class="label">TOTAL AREA</div><div class="value mono">${plot.area.toLocaleString()} m²</div></div></div><div class="report-section"><h4>BOUNDARIES</h4><div class="detail-item"><div class="label">NORTH</div><div class="value">${plot.boundaries.north || 'غير محدد'}</div></div><div class="detail-item"><div class="label">SOUTH</div><div class="value">${plot.boundaries.south || 'غير محدد'}</div></div><div class="detail-item"><div class="label">EAST</div><div class="value">${plot.boundaries.east || 'غير محدد'}</div></div><div class="detail-item"><div class="label">WEST</div><div class="value">${plot.boundaries.west || 'غير محدد'}</div></div></div><div class="report-section"><h4>ATTACHMENTS</h4>${attachmentsHtml}</div>`;
+            reportModal.classList.add('visible');
+        }
+
+        function closeReportModal(event) { 
+            if (event.target === reportModal) { 
+                reportModal.classList.remove('visible'); 
+                currentModalPlot = null; 
+                currentPdf = null;
+            } 
+        }
+        function changeStep(stepNumber) { wizardSteps.forEach(s => s.classList.remove('active')); document.getElementById(`step${stepNumber}`).classList.add('active'); }
+        
+        function validateStep(step) {
+            let isValid = true;
+            const inputs = document.querySelectorAll(`#step${step} input[data-required="true"]`);
+            inputs.forEach(input => {
+                if (!input.value.trim()) {
+                    isValid = false;
+                    input.style.borderColor = 'red';
+                } else {
+                    input.style.borderColor = 'var(--border-primary)';
+                }
+            });
+            return isValid;
+        }
+
+        function handleNextStep(currentStep) {
+            if (validateStep(currentStep)) {
+                changeStep(currentStep + 1);
+            } else {
+                alert('الرجاء تعبئة جميع الحقول المطلوبة في هذه الخطوة للمتابعة.');
+            }
+        }
+
+        function resetFormValidation() {
+            const inputs = addPlotForm.querySelectorAll('input[data-required="true"]');
+            inputs.forEach(input => {
+                input.style.borderColor = 'var(--border-primary)';
+            });
+        }
+        
+        function handleAddPlotSubmit(event) {
+            event.preventDefault();
+            const isStep1Valid = validateStep(1);
+            const isStep2Valid = validateStep(2);
+            if (!isStep1Valid || !isStep2Valid) {
+                alert('الرجاء التأكد من تعبئة جميع الحقول المطلوبة في كافة الخطوات.');
+                if (!isStep1Valid) { changeStep(1); }
+                return;
+            }
+            
+            const attachmentFile = newPlotAttachmentInput.files[0];
+            const plotData = { 
+                id: document.getElementById('newPlotId').value, 
+                owner: document.getElementById('newPlotOwner').value, 
+                prevOwner: document.getElementById('newPlotPrevOwner').value, 
+                area: parseFloat(document.getElementById('newPlotArea').value), 
+                status: 'pending', 
+                attachment: attachmentFile ? attachmentFile.name : null, 
+                attachmentUrl: attachmentFile ? URL.createObjectURL(attachmentFile) : null, 
+                boundaries: { 
+                    north: document.getElementById('newPlotNorth').value, 
+                    south: document.getElementById('newPlotSouth').value, 
+                    east: document.getElementById('newPlotEast').value, 
+                    west: document.getElementById('newPlotWest').value 
+                } 
+            };
+            
+            // Check if we're in edit mode
+            if (addPlotForm.dataset.editMode === 'true') {
+                const editId = addPlotForm.dataset.editId;
+                const plotIndex = mockPlotData.findIndex(plot => plot.id === editId);
+                
+                if (plotIndex !== -1) {
+                    // Preserve the original status and attachment if no new file is uploaded
+                    if (!attachmentFile && mockPlotData[plotIndex].attachment) {
+                        plotData.attachment = mockPlotData[plotIndex].attachment;
+                        plotData.attachmentUrl = mockPlotData[plotIndex].attachmentUrl;
+                    }
+                    plotData.status = mockPlotData[plotIndex].status; // Preserve original status
+                    
+                    // Update the existing plot
+                    mockPlotData[plotIndex] = plotData;
+                    alert('تم تحديث بيانات القطعة بنجاح!');
+                } else {
+                    alert('خطأ: لم يتم العثور على القطعة المحددة.');
+                    return;
+                }
+                
+                // Reset edit mode
+                addPlotForm.dataset.editMode = 'false';
+                addPlotForm.dataset.editId = '';
+                document.querySelector('#add-plot .page-header h2').textContent = 'تسجيل قطعة أرض جديدة';
+                document.querySelector('#step2 .form-actions .btn-primary').textContent = 'حفظ وإنهاء';
+            } else {
+                // Add new plot
+                mockPlotData.unshift(plotData);
+                alert('تمت إضافة القطعة الجديدة بنجاح!');
+            }
+            
+            addPlotForm.reset();
+            resetFormValidation();
+            fileNameDisplay.textContent = 'لم يتم اختيار أي ملف';
+            changeStep(1);
+            navigateTo('manage-plots');
+        }
+
+        function exportToExcel() { if(currentlyDisplayedData.length === 0) return alert('لا توجد بيانات لتصديرها.'); let csv = '\uFEFF' + ['رقم القطعة', 'المالك الحالي', 'المساحة (م²)', 'الحالة', 'المرفق'].join(',') + '\n'; currentlyDisplayedData.forEach(p => csv += [p.id, `"${p.owner}"`, p.area, p.status === 'approved' ? 'معتمدة' : 'قيد المراجعة', p.attachment || ''].join(',') + '\n'); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = "AETHR_Plots_Export.csv"; a.click(); document.body.removeChild(a); }
+        function printModalReport() { if (!currentModalPlot) return; window.print(); }
+        function downloadAttachment() { if (!currentModalPlot || !currentModalPlot.attachmentUrl) return; const a = document.createElement('a'); a.href = currentModalPlot.attachmentUrl; a.download = currentModalPlot.attachment || 'downloaded-file'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+        function exportDashboardPdf() { /* ... unchanged ... */ }
+        
+        // Edit and Delete Functions
+        function editPlot() {
+            if (!currentModalPlot) return;
+            
+            // Close the modal first
+            reportModal.classList.remove('visible');
+            
+            // Navigate to add-plot page
+            navigateTo('add-plot');
+            
+            // Populate the form with current plot data
+            document.getElementById('newPlotId').value = currentModalPlot.id;
+            document.getElementById('newPlotOwner').value = currentModalPlot.owner;
+            document.getElementById('newPlotPrevOwner').value = currentModalPlot.prevOwner || '';
+            document.getElementById('newPlotArea').value = currentModalPlot.area;
+            document.getElementById('newPlotNorth').value = currentModalPlot.boundaries.north || '';
+            document.getElementById('newPlotSouth').value = currentModalPlot.boundaries.south || '';
+            document.getElementById('newPlotEast').value = currentModalPlot.boundaries.east || '';
+            document.getElementById('newPlotWest').value = currentModalPlot.boundaries.west || '';
+            
+            // Change the form title and button text to indicate edit mode
+            document.querySelector('#add-plot .page-header h2').textContent = 'تعديل بيانات القطعة';
+            document.querySelector('#step2 .form-actions .btn-primary').textContent = 'حفظ التعديلات';
+            
+            // Set a flag to indicate we're in edit mode
+            addPlotForm.dataset.editMode = 'true';
+            addPlotForm.dataset.editId = currentModalPlot.id;
+            
+            // Go to step 2 since we have basic data
+            changeStep(2);
+        }
+        
+        function deletePlot() {
+            if (!currentModalPlot) return;
+            
+            const confirmDelete = confirm(`هل أنت متأكد من حذف القطعة رقم ${currentModalPlot.id}؟\nهذا الإجراء لا يمكن التراجع عنه.`);
+            
+            if (confirmDelete) {
+                // Find and remove the plot from mockPlotData
+                const plotIndex = mockPlotData.findIndex(plot => plot.id === currentModalPlot.id);
+                if (plotIndex !== -1) {
+                    mockPlotData.splice(plotIndex, 1);
+                    
+                    // Close the modal
+                    reportModal.classList.remove('visible');
+                    currentModalPlot = null;
+                    
+                    // Refresh the table and dashboard
+                    applyFiltersAndRender();
+                    updateDashboardKPIs();
+                    
+                    alert('تم حذف القطعة بنجاح!');
+                    
+                    // Navigate back to manage plots
+                    navigateTo('manage-plots');
+                } else {
+                    alert('خطأ: لم يتم العثور على القطعة المحددة.');
+                }
+            }
+        }
+        
+        function applyTheme(theme) { body.className = theme + '-mode'; localStorage.setItem('aethr-theme', theme); }
+        function toggleTheme() { applyTheme(body.classList.contains('light-mode') ? 'dark' : 'light'); }
+        
+        searchInput.addEventListener('input', () => { currentPage = 1; applyFiltersAndRender(); });
+        statusFilter.addEventListener('change', () => { currentPage = 1; applyFiltersAndRender(); });
+        rowsPerPageSelect.addEventListener('change', () => { currentPage = 1; applyFiltersAndRender(); });
+        prevPageBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyFiltersAndRender(); } });
+        nextPageBtn.addEventListener('click', () => { currentPage++; applyFiltersAndRender(); });
+        addPlotForm.addEventListener('submit', handleAddPlotSubmit);
+        newPlotAttachmentInput.addEventListener('change', () => { const file = newPlotAttachmentInput.files[0]; fileNameDisplay.textContent = file ? file.name : 'لم يتم اختيار أي ملف'; });
+        addPlotForm.addEventListener('input', (event) => { if (event.target.tagName === 'INPUT' && event.target.style.borderColor === 'red') { event.target.style.borderColor = 'var(--border-primary)'; } });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('aethr-theme');
+            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme) applyTheme(savedTheme); else applyTheme(systemPrefersDark ? 'dark' : 'light');
+            updateDashboardKPIs();
+            navigateTo('dashboard');
+        });
+    </script>
+</body>
+</html>
+
